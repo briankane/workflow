@@ -223,8 +223,8 @@ patch: {
 		}
 
 		By("List pods with labels test=test")
-		res, err := List(ctx, &ResourceParams{
-			Params: ResourceVars{
+		res, err := List(ctx, &ListParams{
+			Params: ListVars{
 				Resource: &unstructured.Unstructured{
 					Object: map[string]interface{}{
 						"apiVersion": "v1",
@@ -246,8 +246,8 @@ patch: {
 		Expect(len(res.Resources.Items)).Should(Equal(5))
 
 		By("List pods with labels index=test-1")
-		res, err = List(ctx, &ResourceParams{
-			Params: ResourceVars{
+		res, err = List(ctx, &ListParams{
+			Params: ListVars{
 				Resource: &unstructured.Unstructured{
 					Object: map[string]interface{}{
 						"apiVersion": "v1",

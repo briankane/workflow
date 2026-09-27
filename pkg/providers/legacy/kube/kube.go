@@ -20,6 +20,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
@@ -258,15 +259,37 @@ type ListReturns struct {
 	Error     string                         `json:"err,omitempty"`
 }
 
+// ListVars are #List's parameters: the resource names the kind to list.
+type ListVars struct {
+	Resource *unstructured.Unstructured `json:"resource"`
+	// Value is read when resource is absent, which #List's schema allows
+	// beside it.
+	Value   *unstructured.Unstructured `json:"value,omitempty"`
+	Filter  *ListFilter                `json:"filter,omitempty"`
+	Cluster string                     `json:"cluster,omitempty"`
+}
+
+// ListParams .
+type ListParams = providertypes.LegacyParams[ListVars]
+
 // List lists CRs from cluster.
-func List(ctx context.Context, params *ResourceParams) (*ListReturns, error) {
+func List(ctx context.Context, params *ListParams) (*ListReturns, error) {
 	workload := params.Params.Resource
+	if workload == nil {
+		workload = params.Params.Value
+	}
+	if workload == nil {
+		return nil, fmt.Errorf("list needs resource, naming the apiVersion and kind to list")
+	}
 	list := &unstructured.UnstructuredList{Object: map[string]interface{}{
 		"kind":       workload.GetKind(),
 		"apiVersion": workload.GetAPIVersion(),
 	}}
 
 	filter := params.Params.Filter
+	if filter == nil {
+		filter = &ListFilter{}
+	}
 	listOpts := []client.ListOption{
 		client.InNamespace(filter.Namespace),
 		client.MatchingLabels(filter.MatchingLabels),
@@ -327,7 +350,7 @@ func GetProviders() map[string]cuexruntime.ProviderFn {
 		"apply":             providertypes.LegacyGenericProviderFn[ResourceVars, ResourceReturns](Apply),
 		"apply-in-parallel": providertypes.LegacyGenericProviderFn[ApplyInParallelVars, ApplyInParallelReturns](ApplyInParallel),
 		"read":              providertypes.LegacyGenericProviderFn[ResourceVars, ResourceReturns](Read),
-		"list":              providertypes.LegacyGenericProviderFn[ResourceVars, ListReturns](List),
+		"list":              providertypes.LegacyGenericProviderFn[ListVars, ListReturns](List),
 		"delete":            providertypes.LegacyGenericProviderFn[ResourceVars, ResourceReturns](Delete),
 		"patch":             providertypes.LegacyNativeProviderFn(Patch),
 	}
