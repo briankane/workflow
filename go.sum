@@ -52,6 +52,8 @@ github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6r
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
+github.com/briankane/pkg v0.0.0-20260928111829-7ce350456176 h1:RqlvEo/JtXnHCY4p912fvG8PkBGdaVW0tbK1D/Kn9wY=
+github.com/briankane/pkg v0.0.0-20260928111829-7ce350456176/go.mod h1:fMCiL8HvjnOG11WdKyONFKYjiBAR9bnnuGBScNAYlx8=
 github.com/casbin/casbin/v2 v2.37.0/go.mod h1:vByNa/Fchek0KZUgG5wEsl7iFsiviAYKRtgrQfcJqHg=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
@@ -322,8 +324,6 @@ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/kubevela/kube-trigger v0.1.1-0.20250711201929-51c837aa9bd2 h1:3FvzYw6qJiAu7OLbOK7PuhDLowtKs3Ugw1gQ2E8jz/Y=
 github.com/kubevela/kube-trigger v0.1.1-0.20250711201929-51c837aa9bd2/go.mod h1:lGeLpXHVxYPulYtVgGatFHFolkmzSmrdyhIQ7BHHJHs=
-github.com/kubevela/pkg v1.11.1-0.20260826024906-a4214d8d3c39 h1:GRG4cDE3ALeIBeyzTQwZKeuGXvUjCd6ulWK5W3C6r60=
-github.com/kubevela/pkg v1.11.1-0.20260826024906-a4214d8d3c39/go.mod h1:MZsc/xbV4rZjE2fMWX8+JovRK/zVUb1HfefGNPYrgq8=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
