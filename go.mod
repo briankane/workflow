@@ -160,3 +160,5 @@ replace (
 	github.com/wercker/stern => github.com/oam-dev/stern v1.13.2
 	sigs.k8s.io/apiserver-runtime => github.com/kmodules/apiserver-runtime v1.1.2-0.20250422194347-c5ac4abaf2ae
 )
+
+replace github.com/kubevela/pkg => github.com/briankane/pkg v0.0.0-20261001065943-26b0a10a373d
