@@ -170,3 +170,5 @@ replace (
 	github.com/sigstore/timestamp-authority/v2 => github.com/sigstore/timestamp-authority/v2 v2.1.4
 	github.com/wercker/stern => github.com/oam-dev/stern v1.13.3-0.20261007155744-2c166cd8b945
 )
+
+replace github.com/kubevela/pkg => github.com/briankane/pkg v0.0.0-20261014104027-2a2c76e989b1
