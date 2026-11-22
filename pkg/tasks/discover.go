@@ -25,6 +25,7 @@ import (
 
 	"github.com/kubevela/workflow/pkg/tasks/builtin"
 	"github.com/kubevela/workflow/pkg/tasks/custom"
+	"github.com/kubevela/workflow/pkg/tasks/template"
 	"github.com/kubevela/workflow/pkg/types"
 )
 
@@ -35,11 +36,15 @@ type taskDiscover struct {
 
 // NewTaskDiscover new task discover
 func NewTaskDiscover(ctx monitorContext.Context, options types.StepGeneratorOptions) types.TaskDiscover { //nolint:revive,unused
+	loader := custom.NewTaskLoader(options.TemplateLoader.LoadTemplate, options.LogLevel, options.ProcessCtx, options.Compiler)
+	if owned, ok := options.TemplateLoader.(template.OwnerLoader); ok {
+		loader.WithOwners(owned.LoadTemplateWithOwner)
+	}
 	return &taskDiscover{
 		builtin: map[string]types.TaskGenerator{
 			types.WorkflowStepTypeStepGroup: builtin.StepGroup,
 		},
-		customTaskDiscover: custom.NewTaskLoader(options.TemplateLoader.LoadTemplate, options.LogLevel, options.ProcessCtx, options.Compiler),
+		customTaskDiscover: loader,
 	}
 }
 

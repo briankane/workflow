@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+	"github.com/kubevela/pkg/cue/cuex"
 	"github.com/kubevela/pkg/util/singleton"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -74,6 +75,43 @@ parameter: {
 	// +usage=Declare the name of the component
 	component: string
 }`)
+}
+
+// A template loaded from a definition comes with it as the owner, writer
+// included; an embedded one comes with none.
+func TestLoadWithOwner(t *testing.T) {
+	cli := &test.MockClient{
+		MockGet: func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+			o, ok := obj.(*unstructured.Unstructured)
+			if !ok {
+				return nil
+			}
+			js, err := yaml.YAMLToJSON([]byte(stepDefYaml))
+			if err != nil {
+				return err
+			}
+			if err := json.Unmarshal(js, &o.Object); err != nil {
+				return err
+			}
+			o.SetAnnotations(map[string]string{
+				"cue.oam.dev/writer":        "alice",
+				"cue.oam.dev/writer-groups": "payments-leads,system:authenticated",
+			})
+			return nil
+		},
+	}
+	singleton.KubeClient.Set(cli)
+	loader, ok := NewWorkflowStepTemplateLoader().(OwnerLoader)
+	require.True(t, ok)
+
+	_, owner, err := loader.LoadTemplateWithOwner(context.Background(), "apply-oam-component")
+	require.NoError(t, err)
+	require.Equal(t, &cuex.Owner{Kind: "WorkflowStepDefinition", Namespace: "vela-system", Name: "apply-oam-component",
+		Writer: &cuex.Writer{User: "alice", Groups: []string{"payments-leads", "system:authenticated"}}}, owner)
+
+	_, owner, err = loader.LoadTemplateWithOwner(context.Background(), "builtin-apply-component")
+	require.NoError(t, err)
+	require.Nil(t, owner)
 }
 
 // TestLoadUpgradesLegacyCUESyntax verifies that LoadTemplate applies CUE version

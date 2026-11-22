@@ -48,20 +48,39 @@ import (
 // LoadTaskTemplate gets the workflowStep definition from cluster and resolve it.
 type LoadTaskTemplate func(ctx context.Context, name string) (string, error)
 
+// LoadOwnedTaskTemplate gets a step's template and the definition it came from,
+// nil for one that came from no definition.
+type LoadOwnedTaskTemplate func(ctx context.Context, name string) (string, *cuex.Owner, error)
+
 // TaskLoader is a client that get taskGenerator.
 type TaskLoader struct {
 	loadTemplate      func(ctx context.Context, name string) (string, error)
+	loadOwned         LoadOwnedTaskTemplate
 	runOptionsProcess func(*types.TaskRunOptions)
 	logLevel          int
 }
 
+// WithOwners has the loader take each template with the definition it came from,
+// so the step compiles as that definition.
+func (t *TaskLoader) WithOwners(load LoadOwnedTaskTemplate) *TaskLoader {
+	t.loadOwned = load
+	return t
+}
+
 // GetTaskGenerator get TaskGenerator by name.
 func (t *TaskLoader) GetTaskGenerator(ctx context.Context, name string) (types.TaskGenerator, error) {
+	if t.loadOwned != nil {
+		templ, owner, err := t.loadOwned(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		return t.makeTaskGenerator(templ, owner)
+	}
 	templ, err := t.loadTemplate(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	return t.makeTaskGenerator(templ)
+	return t.makeTaskGenerator(templ, nil)
 }
 
 type taskRunner struct {
@@ -91,7 +110,7 @@ func (tr *taskRunner) FillContextData(ctx monitorContext.Context, processCtx pro
 }
 
 // nolint:gocyclo
-func (t *TaskLoader) makeTaskGenerator(templ string) (types.TaskGenerator, error) {
+func (t *TaskLoader) makeTaskGenerator(templ string, owner *cuex.Owner) (types.TaskGenerator, error) {
 	return func(wfStep oamv1alpha1.WorkflowStep, genOpt *types.TaskGeneratorOptions) (types.TaskRunner, error) {
 
 		initialStatus := v1alpha1.StepStatus{
@@ -183,6 +202,9 @@ func (t *TaskLoader) makeTaskGenerator(templ string) (types.TaskGenerator, error
 				ProcessContext:  options.PCtx,
 				Action:          exec,
 			})
+			if owner != nil {
+				ctx = cuex.WithOwner(ctx, *owner)
+			}
 
 			step, exprErr := resolveProperties(tracer.GetContext(), propertyEvaluator, written, wfStep, convert, wfCtx, options)
 			basicVal, err := MakeBasicValue(tracer, options.Compiler, step.Properties, options.PCtx)

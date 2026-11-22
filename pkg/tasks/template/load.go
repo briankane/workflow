@@ -21,6 +21,8 @@ import (
 	"embed"
 	"fmt"
 
+	"github.com/kubevela/pkg/cue/cuex"
+	"github.com/kubevela/pkg/cue/cuex/access"
 	"github.com/kubevela/pkg/util/singleton"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,16 +56,34 @@ type Loader interface {
 	LoadTemplate(ctx context.Context, name string) (string, error)
 }
 
+// OwnerLoader is a Loader that also says which definition a template came from,
+// so a step compiles as that definition.
+type OwnerLoader interface {
+	Loader
+	// LoadTemplateWithOwner is LoadTemplate with the definition, nil for a
+	// template that came from none.
+	LoadTemplateWithOwner(ctx context.Context, name string) (string, *cuex.Owner, error)
+}
+
 // WorkflowStepLoader load workflowStep task definition template.
 type WorkflowStepLoader struct {
-	loadDefinition func(ctx context.Context, capName string) (string, error)
+	loadDefinition func(ctx context.Context, capName string) (string, *cuex.Owner, error)
 }
+
+var _ OwnerLoader = &WorkflowStepLoader{}
 
 // LoadTemplate gets the workflow step definition.
 func (loader *WorkflowStepLoader) LoadTemplate(ctx context.Context, name string) (string, error) {
+	tmpl, _, err := loader.LoadTemplateWithOwner(ctx, name)
+	return tmpl, err
+}
+
+// LoadTemplateWithOwner gets the workflow step definition and who it is. An
+// embedded template has no owner.
+func (loader *WorkflowStepLoader) LoadTemplateWithOwner(ctx context.Context, name string) (string, *cuex.Owner, error) {
 	files, err := templateFS.ReadDir(templateDir)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	staticFilename := name + ".cue"
@@ -71,16 +91,16 @@ func (loader *WorkflowStepLoader) LoadTemplate(ctx context.Context, name string)
 		if staticFilename == file.Name() {
 			fileName := fmt.Sprintf("%s/%s", templateDir, file.Name())
 			content, err := templateFS.ReadFile(fileName)
-			return string(content), err
+			return string(content), nil, err
 		}
 	}
 
-	tmpl, err := loader.loadDefinition(ctx, name)
+	tmpl, owner, err := loader.loadDefinition(ctx, name)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	upgraded, _ := wfupgrade.EnsureCueVersionCompatibility(tmpl, name, wfupgrade.WorkflowStepKind, wfupgrade.TemplateAreaMain)
-	return upgraded, nil
+	return upgraded, owner, nil
 }
 
 // NewWorkflowStepTemplateLoader create a task template loader.
@@ -100,7 +120,7 @@ type def struct {
 	} `json:"spec,omitempty"`
 }
 
-func getDefinitionTemplate(ctx context.Context, definitionName string) (string, error) {
+func getDefinitionTemplate(ctx context.Context, definitionName string) (string, *cuex.Owner, error) {
 	const (
 		definitionAPIVersion       = "core.oam.dev/v1beta1"
 		kindWorkflowStepDefinition = "WorkflowStepDefinition"
@@ -113,17 +133,19 @@ func getDefinitionTemplate(ctx context.Context, definitionName string) (string, 
 	if err := cli.Get(ctx, types.NamespacedName{Name: definitionName, Namespace: ns}, definition); err != nil {
 		if apierrors.IsNotFound(err) {
 			if err := cli.Get(ctx, types.NamespacedName{Name: definitionName, Namespace: systemDefinitionNamespace}, definition); err != nil {
-				return "", err
+				return "", nil, err
 			}
 		} else {
-			return "", err
+			return "", nil, err
 		}
 	}
 	d := new(def)
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(definition.Object, d); err != nil {
-		return "", errors.Wrap(err, "invalid workflow step definition")
+		return "", nil, errors.Wrap(err, "invalid workflow step definition")
 	}
-	return d.Spec.Schematic.CUE.Template, nil
+	owner := &cuex.Owner{Kind: kindWorkflowStepDefinition, Namespace: definition.GetNamespace(), Name: definition.GetName(),
+		Writer: access.WriterOf(definition.GetAnnotations())}
+	return d.Spec.Schematic.CUE.Template, owner, nil
 }
 
 func getDefinitionNamespaceWithCtx(ctx context.Context) string {
