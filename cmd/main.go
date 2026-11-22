@@ -48,6 +48,7 @@ import (
 	crtlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	triggerv1alpha1 "github.com/kubevela/kube-trigger/api/v1alpha1"
+	cuexv1alpha1 "github.com/kubevela/pkg/apis/cue/v1alpha1"
 	oamv1alpha1 "github.com/kubevela/pkg/apis/oam/v1alpha1"
 	velaclient "github.com/kubevela/pkg/controller/client"
 	"github.com/kubevela/pkg/multicluster"
@@ -81,6 +82,7 @@ func init() {
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(oamv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(cuexv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -142,6 +144,8 @@ func main() {
 	flag.Int64Var(&httpguard.MaxResponseBytes, "max-workflow-http-response-bytes", httpguard.MaxResponseBytes, "Set the largest response body, in bytes, a workflow HTTP request may read")
 	flag.StringVar(&workflowHTTPDenyConfigTemplateName, "workflow-http-deny-config-template-name", httpguard.WorkflowHTTPDenyConfigTemplate, "Discover and merge ConfigMaps produced by this ConfigTemplate in the controller namespace")
 	flag.BoolVar(&providers.EnableExternalPackageForDefaultCompiler, "enable-external-package-for-default-compiler", true, "Enable external package for default compiler")
+	accessRecheck := 5 * time.Minute
+	flag.DurationVar(&accessRecheck, "cuex-access-recheck-interval", accessRecheck, "How long a writer's grant to call a restricted CueX Package is trusted before it is asked again. Role membership is read from the cache on every call.")
 	flag.BoolVar(&providers.EnableExternalPackageWatchForDefaultCompiler, "enable-external-package-watch-for-default-compiler", false, "Enable external package watch for default compiler")
 	flag.BoolVar(wfupgrade.EnableCUEVersionCompatibility, "enable-cue-version-compatibility", *wfupgrade.EnableCUEVersionCompatibility, "Automatically rewrite legacy CUE syntax in stored definitions at render time.")
 	flag.IntVar(&wfupgrade.CompatibilityCacheSize, "cue-compatibility-cache-size", wfupgrade.CompatibilityCacheSize, "Maximum number of CUE templates to cache after version compatibility rewriting. Set to 0 to disable caching.")
@@ -267,6 +271,7 @@ func main() {
 	}
 
 	kubeClient := mgr.GetClient()
+	installCallCheck(kubeClient, accessRecheck)
 	controllerNamespace := resolveControllerNamespace()
 	blockPrivate := feature.DefaultMutableFeatureGate.Enabled(features.BlockPrivateHTTPAddresses)
 	if err := configureWorkflowHTTPDeny(context.Background(), mgr.GetAPIReader(), mgr, workflowHTTPDenyConfigTemplateName, controllerNamespace, blockPrivate); err != nil {
